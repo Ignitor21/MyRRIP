@@ -1,8 +1,9 @@
+#include "lru.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
-long DIVISOR = 100003;
+const long DIVISOR = 100000;
 
 struct node_t
 {
@@ -35,7 +36,12 @@ struct hash_t
 struct list_t* create_list()
 {
 	struct list_t* list = calloc(1, sizeof(struct list_t));
-	assert(list != NULL && "Heap overflow");
+
+	if (list == NULL)
+	{
+		fprintf(stderr, "Memory exhausted\n");
+		abort();
+	}
 
 	list->head = NULL;
 	list->tail = NULL;
@@ -47,10 +53,20 @@ struct list_t* create_list()
 struct hash_t* create_hash()
 {
 	struct hash_t* hash = calloc(1, sizeof(struct hash_t));
-	assert(hash != NULL && "Heap overflow");
+
+	if (hash == NULL)
+	{
+		fprintf(stderr, "Memory exhausted\n");
+		abort();
+	}
 
 	hash->arr = calloc(DIVISOR, sizeof(struct hash_node_t*));
-	assert(hash->arr != NULL && "Heap overflow!");
+
+	if (hash->arr == NULL)
+	{
+		fprintf(stderr, "Memory exhausted\n");
+		abort();
+	}
 
 	hash->len = DIVISOR;
 	hash->nodes_hashed = 0;
@@ -60,20 +76,10 @@ struct hash_t* create_hash()
 
 void print_list(const struct list_t* list)
 {
+	assert(list && "list is a NULL pointer");
+	assert(list->head && "list is empty");
+
 	struct node_t* cur = list->head;
-
-	if (list == NULL)
-	{
-		printf("List is a NULL pointer\n");
-		return;
-	}
-
-	if (list->head == NULL)
-	{
-		printf("Empty list\n");
-		return;
-	}
-
 
 	while (cur != NULL)
 	{
@@ -87,9 +93,11 @@ void print_list(const struct list_t* list)
 
 void free_list(struct list_t* list)
 {
-	struct node_t* top = NULL;
+	assert(list && "list is a NULL pointer");
+	assert(list->head && "list is empty");
+	
+	struct node_t* top = list->head;
 	struct node_t* next = NULL;
-	top = list->head;
 
 	while (top != NULL)
 	{
@@ -103,10 +111,13 @@ void free_list(struct list_t* list)
 
 void free_hash(struct hash_t* hash)
 {
+	assert(hash && "hash is a NULL pointer");
+	assert(hash->arr && "hash-table is empty");
+
 	struct hash_node_t* cur = NULL;
 	struct hash_node_t* next = NULL;
 
-	for (long i = 0; i < DIVISOR; ++i)
+	for (long i = 0; i < hash->len; ++i)
 	{
 		if (hash->arr[i] == NULL)
 			continue;
@@ -120,6 +131,7 @@ void free_hash(struct hash_t* hash)
 			cur = next;
 		}
 	}
+
 	free(hash->arr);
 	free(hash);
 }
@@ -132,9 +144,18 @@ long get_hash(const long page)
 struct hash_node_t* create_hash_node(const long page)
 {
 	struct hash_node_t* hash_node = calloc(1, sizeof(struct hash_node_t));
-	assert(hash_node != NULL);
+	if (hash_node == NULL)
+	{
+		fprintf(stderr, "Memory exhausted\n");
+		abort();
+	}
+
 	hash_node->node = calloc(1, sizeof(struct node_t));
-	assert(hash_node->node != NULL);
+	if (hash_node->node == NULL)
+	{
+		fprintf(stderr, "Memory exhausted\n");
+		abort();
+	}
 
 	hash_node->next = NULL;
 	hash_node->prev = NULL;
@@ -148,11 +169,14 @@ struct hash_node_t* create_hash_node(const long page)
 
 void oust_head(struct hash_t* hash, struct list_t* list)
 {
+	assert(hash && "hash is a NULL pointer");
+	assert(hash->arr && "hash is empty");
+	assert(list && "list is a NULL pointer");
+	assert(list->head && "list is empty");
+	
 	long key = list->head->data;
 	long index = get_hash(key);
 	struct hash_node_t* cur_hash_node = hash->arr[index];
-
-	assert(hash->arr != NULL && list != NULL);
 
 	while(cur_hash_node->node->data != key)
 	{
@@ -188,12 +212,14 @@ void oust_head(struct hash_t* hash, struct list_t* list)
 }
 
 void cache_miss(struct hash_t* hash, struct list_t* list, const long index, const long page, const long len)
-{
+{	
+	assert(hash && "hash is a NULL pointer");
+	assert(hash->arr && "hash is empty");
+	assert(list && "list is a NULL pointer");
+
 	struct hash_node_t* cur_hash_node = NULL;
 	struct node_t* node = NULL;
 	struct hash_node_t* hash_node = NULL;
-
-	assert(hash->arr != NULL && list != NULL);
 
 	cur_hash_node = hash->arr[index];
 
@@ -248,7 +274,9 @@ void cache_miss(struct hash_t* hash, struct list_t* list, const long index, cons
 
 void cache_hit(struct list_t* list, struct node_t* node)
 {
-	assert(list != NULL && node != NULL);
+	assert(list && "list is a NULL pointer");
+	assert(list->head && "list is empty");
+	assert(node && "node is a NULL pointer");
 
 	if (node == list->head)
 	{
@@ -273,21 +301,14 @@ void cache_hit(struct list_t* list, struct node_t* node)
 	return;        
 }
 
-void rehash(struct hash_node_t** hash_list)
-{
-
-
-}
-
 long lru(struct hash_t* hash, struct list_t* list, const long page, const long len)
 {
-	struct hash_node_t* cur_hash_node = NULL;
-	long index = 0;
+	assert(hash && "hash is NULL pointer");
+	assert(hash->arr && "hash is empty");
+	assert(list && "list is NULL pointer");
 
-	assert(hash != NULL && list != NULL);
-
-	index = get_hash(page);
-	cur_hash_node = hash->arr[index];
+	long index = get_hash(page);
+	struct hash_node_t* cur_hash_node = hash->arr[index];
 
 	if (cur_hash_node == NULL)
 	{
@@ -309,32 +330,4 @@ long lru(struct hash_t* hash, struct list_t* list, const long page, const long l
 	cache_miss(hash, list, index, page, len);
 	return 0;
 
-}
-
-int main()
-{
-	long len = 0, n = 0, page = 0, answer = 0;
-	struct list_t* list = create_list();
-	struct hash_t* hash = create_hash();
-
-	scanf("%ld %ld", &len, &n);
-
-	if (len == 1)
-	{
-		printf("0");
-		return 0;
-	}
-
-	for (long i = 0; i < n; ++i)
-	{
-		scanf("%ld", &page);
-		answer += lru(hash, list, page, len);
-		//print_list(list);
-	}
-
-	printf("%ld\n", answer);
-	free_list(list);
-	free_hash(hash);
-
-	return 0;
 }
