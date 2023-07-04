@@ -12,7 +12,5 @@ void free_list(struct list_t* list);
 void free_hash(struct hash_t* hash);
 long get_hash(const long page);
 struct hash_node_t* create_hash_node(const long page);
-void oust_head(struct hash_t* hash, struct list_t* list);
 void cache_miss(struct hash_t* hash, struct list_t* list, const long index, const long page);
-void cache_hit(struct list_t* list, struct node_t* node);
-long lru(struct hash_t* hash, struct list_t* list, const long page);
+long rrip(struct hash_t* hash, struct list_t* list, const long page);
