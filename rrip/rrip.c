@@ -1,8 +1,10 @@
+#include "rrip.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
 const long HASH_SIZE = 131072;
+const unsigned DISTANT_RRPV = 3;
 
 struct node_t
 {
@@ -58,13 +60,12 @@ struct list_t* create_list(const long size)
 	cur->data = -1;
 	cur->next = NULL;
 	cur->prev = NULL;
-	cur->rrpv = 3;
+	cur->rrpv = DISTANT_RRPV;
 
 	list->head = cur;
 	list->fst_dst = cur;
 	list->size = size;
 	list->pages_cached = 0;
-	list->size = size;
 
 	for (int i = 0; i < size - 1; ++i)
 	{
@@ -79,10 +80,11 @@ struct list_t* create_list(const long size)
 		next->prev = cur;
 		next->next = NULL;
 		next->data = -1;
-		next->rrpv = 3;
+		next->rrpv = DISTANT_RRPV;
 		cur = next;
 	}
 
+	list->tail = cur;
 	return list;
 }
 
@@ -174,7 +176,7 @@ void free_hash(struct hash_t* hash)
 
 long get_hash(const long page)
 {
-	return page & (HASH_SIZE - 1);
+	return page % HASH_SIZE;
 }
 
 struct hash_node_t* create_hash_node(const long page)
@@ -199,10 +201,105 @@ struct hash_node_t* create_hash_node(const long page)
 	hash_node->node->next = NULL;
 	hash_node->node->prev = NULL;
 	hash_node->node->data = page;
-	hash_node->node->rrpv = 3;
+	hash_node->node->rrpv = DISTANT_RRPV;
 
 	return hash_node;
 } 
+
+void delete_hash_node(struct hash_t* hash, const long key)
+{
+	assert(hash && "hash is a NULL pointer");
+	assert(hash->arr && "hash is empty");
+
+	long key_index = get_hash(key);
+	struct hash_node_t* cur_hash_node = hash->arr[key_index];
+
+	while(cur_hash_node->node->data != key)
+	{
+		if (cur_hash_node == NULL)
+		{
+			fprintf(stderr, "No page %ld in hash\n", key);
+			return;
+		}
+		cur_hash_node = cur_hash_node->next;
+	}
+
+	if(cur_hash_node->prev == NULL)
+	{
+		hash->arr[key_index] = cur_hash_node->next;
+
+		if (cur_hash_node->next != NULL)
+			cur_hash_node->next->prev = NULL;
+			
+		free(cur_hash_node);
+		return;
+	}
+
+	if (cur_hash_node->next == NULL)
+	{
+		cur_hash_node->prev->next = NULL;
+		free(cur_hash_node);
+		return;
+	}
+
+	cur_hash_node->next->prev = cur_hash_node->prev;
+	cur_hash_node->prev->next = cur_hash_node->next;
+	free(cur_hash_node);
+	return;
+}
+
+void list_replacement(struct list_t* list, struct hash_node_t* hash_node)
+{
+	assert(list && "list is a NULL pointer");
+	assert(hash_node && "hash node is a NULL pointer");
+
+	struct node_t* node = hash_node->node;
+	struct node_t* cur = NULL;
+
+	if (list->fst_dst == list->head)
+	{
+		node->next = list->head->next;
+		node->prev = NULL;
+
+		if (list->head->next != NULL)
+			list->head->next->prev = node;
+		
+		list->head = node;
+	}
+
+	else if (list->fst_dst == list->tail)
+	{
+		node->prev = list->tail->prev;
+		node->next = NULL;
+		list->fst_dst->prev->next = node;
+		list->tail = node;
+	}
+
+	else
+	{
+		node->next = list->fst_dst->next;
+		node->prev = list->fst_dst->prev;
+		list->fst_dst->next->prev = node;
+		list->fst_dst->prev->next = node;
+	}
+
+		node->rrpv = 2;
+		free(list->fst_dst);
+		list->fst_dst = NULL;
+		cur = list->head;
+
+		while (cur != NULL)
+		{
+			if (cur->rrpv == DISTANT_RRPV)
+			{
+				list->fst_dst = cur;
+				break;
+			}
+			cur = cur->next;
+		}
+
+		return;
+}
 
 void cache_miss(struct hash_t* hash, struct list_t* list, const long index, const long page)
 {	
@@ -210,30 +307,33 @@ void cache_miss(struct hash_t* hash, struct list_t* list, const long index, cons
 	assert(hash->arr && "hash is empty");
 	assert(list && "list is a NULL pointer");
 
-	struct hash_node_t* cur_hash_node = hash->arr[index];
-	struct node_t* cur = list->head;
-	struct node_t* next = cur->next;
-	struct hash_node_t* hash_node = NULL;
+	struct hash_node_t* new_hash_node = NULL;
+	struct hash_node_t* hash_node = hash->arr[index];
+	struct node_t* cur = NULL;
 
-	if (cur_hash_node == NULL)
-	{
-		cur_hash_node = create_hash_node(page);
-		hash->arr[index] = cur_hash_node;
-	}
+	new_hash_node = create_hash_node(page);
+	hash->arr[index] = new_hash_node;
+	new_hash_node->next = hash_node;
+
+	if (hash_node != NULL)
+		hash_node->prev = new_hash_node;
 
 	while (list->fst_dst == NULL)
 	{
-		while (next != NULL)
+		cur = list->head;
+		while (cur != NULL)
 		{
 			++(cur->rrpv);
-			if (cur->rrpv == 3 && list->fst_dst == NULL)
+			if (cur->rrpv == DISTANT_RRPV && list->fst_dst == NULL)
 				list->fst_dst = cur;
-			cur = next;
-			next = next->next;
+			cur = cur->next;
 		}
 	}
 
-	// TO DO: replacement
+	if (list->fst_dst->data > 0)
+		delete_hash_node(hash, list->fst_dst->data);
+
+	list_replacement(list, new_hash_node);
 	return;
 }
 
@@ -245,12 +345,6 @@ long rrip(struct hash_t* hash, struct list_t* list, const long page)
 
 	long index = get_hash(page);
 	struct hash_node_t* cur_hash_node = hash->arr[index];
-
-	if (cur_hash_node == NULL)
-	{
-		cache_miss(hash, list, index, page);
-		return 0;
-	}
 
 	while(cur_hash_node != NULL)
 	{
