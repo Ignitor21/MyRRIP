@@ -1,3 +1,12 @@
+/*
+********************************************************************************
+*                                                                              
+*        File with implementation of utility functions for LRU cache policy            
+*                            (Least recently used)  
+*                                                           
+********************************************************************************
+*/
+
 #include "lru.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +25,7 @@ struct list_t
 {
 	struct node_t* head;
 	struct node_t* tail;
-	long pages_cached;
+	long pages_cached; // number of cached pages
 	long size;
 };
 
@@ -31,7 +40,7 @@ struct hash_t
 {
 	struct hash_node_t** arr;
 	long len;
-	long nodes_hashed;
+	long nodes_hashed; // number of hashed nodes
 };
 
 struct list_t* create_list(const long size)

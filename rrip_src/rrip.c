@@ -1,3 +1,12 @@
+/*
+********************************************************************************
+*                                                                              
+*        File with implementation of utility functions for RRIP policy            
+*                  (Re-rederence interval prediction)  
+*                                                           
+********************************************************************************
+*/
+
 #include "rrip.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,14 +20,14 @@ struct node_t
 	struct node_t* next;
 	struct node_t* prev;
 	long data;
-	unsigned rrpv:2;
+	unsigned rrpv:2; //re-reference prediction value
 };
 
 struct list_t
 {
 	struct node_t* head;
 	struct node_t* tail;
-        struct node_t* fst_dst;
+        struct node_t* fst_dst; // pointer to the first element with distant rrpv
 	long size;
 };
 
@@ -35,7 +44,7 @@ struct hash_t
 	long size;
 };
 
-struct list_t* create_list(const long size)
+struct list_t* create_list(const long size) 
 {
 	assert(size > 0 && "Size is negative");
 
@@ -87,7 +96,7 @@ struct list_t* create_list(const long size)
 	return list;
 }
 
-struct hash_t* create_hash()
+struct hash_t* create_hash() 
 {
 	struct hash_t* hash = calloc(1, sizeof(struct hash_t));
 
@@ -110,7 +119,7 @@ struct hash_t* create_hash()
 	return hash;
 }
 
-void print_list(const struct list_t* list)
+void print_list(const struct list_t* list) 
 {
 	assert(list && "list is a NULL pointer");
 	assert(list->head && "list is empty");
@@ -132,7 +141,7 @@ void print_list(const struct list_t* list)
 	return;
 }
 
-void free_list(struct list_t* list)
+void free_list(struct list_t* list) 
 {
 	assert(list && "list is a NULL pointer");
 	assert(list->head && "list is empty");
@@ -179,10 +188,10 @@ void free_hash(struct hash_t* hash)
 
 long get_hash(const long page)
 {
-	return page & (HASH_SIZE - 1);
+	return page & (HASH_SIZE - 1); // bit operation instead of %
 }
 
-struct hash_node_t* create_hash_node(const long page)
+struct hash_node_t* create_hash_node(const long page) 
 {
 	struct hash_node_t* hash_node = calloc(1, sizeof(struct hash_node_t));
 	if (hash_node == NULL)
@@ -209,7 +218,7 @@ struct hash_node_t* create_hash_node(const long page)
 	return hash_node;
 } 
 
-void delete_hash_node(struct hash_t* hash, const long key)
+void delete_hash_node(struct hash_t* hash, const long key) 
 {
 	assert(hash && "hash is a NULL pointer");
 	assert(hash->arr && "hash is empty");
