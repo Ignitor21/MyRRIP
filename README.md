@@ -34,7 +34,7 @@ Let's talk about data structures that will be convenient to use. First of all we
 ### __Double linked list__
 We use such data structure instead of array because list has fast insertion, deletion and rearrangement of elements.
 
-__Здесь должна быть картинка со списком.__
+![List](./images/list.png)
 
 But list have one problem: if we want to know is page cached or not, we have to walk through all the elements. Thus it will cost O(n). We don't want to spend this time for search. In this case __hash-table__ will help us!  
 
@@ -42,7 +42,7 @@ But list have one problem: if we want to know is page cached or not, we have to 
 
 Hash-table is implemented as an array of structures which contents pointers to elements of cache and pointers to previous and next hash nodes. These pointers are used in case of hash function collisions. We can imagine hash-table like these:
 
-__Здесь опять должна быть картинка__
+![Hash](./images/hash.png)
 
 So there is also double linked list. Using this data structure we find out if page cached or not in O(1*). Star means collisions of hash function.
 
